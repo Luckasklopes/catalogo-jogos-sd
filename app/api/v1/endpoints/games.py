@@ -23,8 +23,8 @@ def generate_slug(title: str) -> str:
     text = re.sub(r'-+', '-', text).strip('-')
     return text
 
-@router.get("/", response_model=StandardResponse)
-def read_games(skip: int = 0, limit: int = 100, genre: Optional[str] = None, platform: Optional[str] = None, db: Session = Depends(get_db)):
+@router.get("", response_model=StandardResponse)
+def read_games(skip: int = 0, limit: int = 100, genre: Optional[str] = None, platform: Optional[str] = None, db: Session = Depends(get_db), current_user: UserAuth = Depends(get_current_user)):
     query = db.query(Game)
     
     if genre:
@@ -38,7 +38,7 @@ def read_games(skip: int = 0, limit: int = 100, genre: Optional[str] = None, pla
     
     return {"success": True, "message": "Lista de jogos", "data": data}
 
-@router.post("/", response_model=StandardResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=StandardResponse, status_code=status.HTTP_201_CREATED)
 def create_game(game: GameCreate, db: Session = Depends(get_db), current_user: UserAuth = Depends(get_current_user)):
     slug = generate_slug(game.title)
     
@@ -59,7 +59,7 @@ def create_game(game: GameCreate, db: Session = Depends(get_db), current_user: U
     return {"success": True, "message": "Jogo criado com sucesso", "data": data}
 
 @router.get("/{id_ou_slug}", response_model=StandardResponse)
-def read_game(id_ou_slug: str, db: Session = Depends(get_db)):
+def read_game(id_ou_slug: str, db: Session = Depends(get_db), current_user: UserAuth = Depends(get_current_user)):
     if id_ou_slug.isdigit():
         db_game = db.query(Game).filter(Game.id == int(id_ou_slug)).first()
     else:
