@@ -10,12 +10,24 @@ class UserAuth(BaseModel):
     id: str
     token: str
 
+def format_public_key(key: str) -> str:
+    key = key.replace('\\n', '\n')
+    header = "-----BEGIN PUBLIC KEY-----"
+    footer = "-----END PUBLIC KEY-----"
+    
+    if header in key and footer in key:
+        # Extrai o miolo, remove todos os espaços e quebras de linha
+        body = key.replace(header, "").replace(footer, "")
+        body = "".join(body.split())
+        return f"{header}\n{body}\n{footer}"
+    return key
+
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> UserAuth:
     token = credentials.credentials
     
     try:
-        # A chave pública pode vir com '\n' escapado do .env
-        public_key = settings.JWT_PUBLIC_KEY_PEM.replace('\\n', '\n')
+        # Garante que a chave terá o formato PEM válido, independentemente de como foi definida no .env
+        public_key = format_public_key(settings.JWT_PUBLIC_KEY_PEM)
         
         payload = jwt.decode(
             token,
