@@ -42,31 +42,50 @@ Abaixo estão as informações detalhadas sobre as responsabilidades, fluxo e ar
 * **Busca e Filtragem:** Permitir que outros serviços consultem jogos por critérios específicos.
 
 ### Dados que o serviço precisa receber
-Para o cadastro ou atualização de um jogo, o serviço requer:
-* **Nome do jogo:** (String)
-* **Descrição:** (Text/Markdown)
-* **Gêneros:** (Array de IDs ou nomes)
-* **Plataformas:** (Array de IDs - ex: Steam, Epic, Xbox)
-* **Mídia:** (URLs de imagens de capa e galeria)
-* **Desenvolvedora/Distribuidora:** (String)
-* **Requisitos de Sistema:** (Objeto JSON com CPU, GPU, RAM mínimos e recomendados)
+Para o cadastro de um jogo (`POST /api/v1/catalog/games`), o serviço requer o seguinte corpo JSON. Para atualização (`PATCH`), os campos são opcionais.
+
+```json
+{
+  "title": "Cyber-Acre 2077",
+  "description": "Um RPG de ação em um futuro distópico no norte do Brasil.",
+  "genres": ["Action", "RPG"],
+  "platforms": ["PC", "Linux"],
+  "developer": "Acre Studio",
+  "images": {
+    "thumbnail": "https://cdn.gameverse.com/covers/ca2077_thumb.jpg",
+    "header": "https://cdn.gameverse.com/headers/ca2077_wide.jpg"
+  },
+  "system_requirements": {
+    "cpu": "Intel Core i7-4790K",
+    "gpu": "GTX 1060 6GB",
+    "ram": "12GB"
+  },
+  "active": true
+}
+```
 
 ### Dados que o serviço deve retornar
 Exemplo de resposta ao consultar um jogo específico:
 ```json
 {
   "success": true,
-  "message": "Jogo localizado com sucesso",
+  "message": "Detalhes do jogo",
   "data": {
-    "game_id": "gv-8829",
-    "title": "Cyber-Acre 2077",
+    "id": 8829,
     "slug": "cyber-acre-2077",
-    "platforms": ["PC", "Linux"],
-    "genres": ["Action", "RPG"],
+    "title": "Cyber-Acre 2077",
     "description": "Um RPG de ação em um futuro distópico no norte do Brasil.",
+    "genres": ["Action", "RPG"],
+    "platforms": ["PC", "Linux"],
+    "developer": "Acre Studio",
     "images": {
       "thumbnail": "https://cdn.gameverse.com/covers/ca2077_thumb.jpg",
       "header": "https://cdn.gameverse.com/headers/ca2077_wide.jpg"
+    },
+    "system_requirements": {
+      "cpu": "Intel Core i7-4790K",
+      "gpu": "GTX 1060 6GB",
+      "ram": "12GB"
     },
     "active": true
   }
@@ -88,10 +107,18 @@ Exemplo de resposta ao consultar um jogo específico:
 6. O **Usuário** realiza uma busca e o serviço retorna a lista filtrada de jogos.
 
 ### Rotas da API
-* `GET /api/v1/catalog/games` (Listagem com paginação e filtros de gênero/plataforma)
-* `POST /api/v1/catalog/games` (Criação de novo título - Restrito a Admin)
-* `GET /api/v1/catalog/games/{id_ou_slug}` (Detalhes completos de um jogo específico)
-* `PATCH /api/v1/catalog/games/{id}` (Atualização parcial de dados como descrição ou imagens)
+
+> [!IMPORTANT]
+> **Consulte o Swagger UI (`http://localhost:8000/docs`)**
+> O Swagger é a **fonte oficial da verdade** para a nossa API. Recomendamos fortemente utilizá-lo para testar os endpoints de forma interativa, consultar os esquemas de requisição exatos (schemas Pydantic), ver o que é obrigatório/opcional e realizar as chamadas autenticadas facilmente configurando seu Token JWT no botão "Authorize".
+
+Todas as rotas abaixo requerem que o cliente envie o token de acesso (`Authorization: Bearer <token>`):
+
+* `GET /api/v1/catalog/games` (Listagem com paginação e filtros)
+* `POST /api/v1/catalog/games` (Criação de novo título)
+* `GET /api/v1/catalog/games/{id_ou_slug}` (Detalhes completos de um jogo)
+* `PATCH /api/v1/catalog/games/{id}` (Atualização parcial de dados)
+* `DELETE /api/v1/catalog/games/{id_ou_slug}` (Remoção do jogo do catálogo)
 
 ### Possíveis erros
 * **Jogo não encontrado:** Quando um ID inválido é solicitado.
