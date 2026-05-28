@@ -1,10 +1,12 @@
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import Request
 import jwt
 from pydantic import BaseModel
 from app.core.config import settings
+import textwrap
 
-security = HTTPBearer()
+class AuthException(Exception):
+    def __init__(self, message: str):
+        self.message = message
 
 class UserAuth(BaseModel):
     id: str
@@ -16,17 +18,25 @@ def format_public_key(key: str) -> str:
     footer = "-----END PUBLIC KEY-----"
     
     if header in key and footer in key:
-        # Extrai o miolo, remove todos os espaços e quebras de linha
         body = key.replace(header, "").replace(footer, "")
         body = "".join(body.split())
+        body = "\n".join(textwrap.wrap(body, width=64))
         return f"{header}\n{body}\n{footer}"
     return key
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> UserAuth:
-    token = credentials.credentials
+def get_current_user(request: Request) -> UserAuth:
+    auth_header = request.headers.get("authorization")
+    
+    if not auth_header:
+        raise AuthException("Missing Authorization header")
+        
+    parts = auth_header.split(" ")
+    if len(parts) != 2 or parts[0].lower() != "bearer":
+        raise AuthException("Authorization must be Bearer token")
+        
+    token = parts[1]
     
     try:
-        # Garante que a chave terá o formato PEM válido, independentemente de como foi definida no .env
         public_key = format_public_key(settings.JWT_PUBLIC_KEY_PEM)
         
         payload = jwt.decode(
@@ -39,30 +49,10 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
         
         sub = payload.get("sub")
         if not sub or not str(sub).strip():
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token claims",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
+            raise AuthException("Invalid token claims")
             
         return UserAuth(id=str(sub), token=token)
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token expired",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    except jwt.InvalidTokenError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid access token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
     except Exception as e:
         import traceback
-        traceback.print_exc() # Imprime no log do docker para ajudar a debugar
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Could not validate credentials: {str(e)}",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        traceback.print_exc()
+        raise AuthException("Invalid or expired access token")
